@@ -7,7 +7,22 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-estoque-prod-test-k
 
 DEBUG = os.getenv('DJANGO_DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']
+# Allowed Hosts configuration for api.estoquee.xyz and deployment environments
+ALLOWED_HOSTS_ENV = os.getenv('DJANGO_ALLOWED_HOSTS', '')
+if ALLOWED_HOSTS_ENV:
+    ALLOWED_HOSTS = [h.strip() for h in ALLOWED_HOSTS_ENV.split(',') if h.strip()]
+else:
+    ALLOWED_HOSTS = [
+        'api.estoquee.xyz',
+        'estoquee.xyz',
+        'www.estoquee.xyz',
+        '.estoquee.xyz',
+        'localhost',
+        '127.0.0.1',
+        '0.0.0.0',
+        'web',
+        '*',
+    ]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -59,12 +74,25 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'estoque_project.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# Database configuration: PostgreSQL in production, SQLite in local dev/testing
+if os.getenv('POSTGRES_HOST'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('POSTGRES_DB', 'estoque_db'),
+            'USER': os.getenv('POSTGRES_USER', 'estoque_user'),
+            'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'estoque_secret'),
+            'HOST': os.getenv('POSTGRES_HOST', 'db'),
+            'PORT': os.getenv('POSTGRES_PORT', '5432'),
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 AUTH_USER_MODEL = 'accounts.User'
 
@@ -83,9 +111,47 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS & CSRF Settings for api.estoquee.xyz
+CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'False') == 'True' if not DEBUG else True
+
+CORS_ALLOWED_ORIGINS = [
+    'https://estoquee.xyz',
+    'https://www.estoquee.xyz',
+    'https://api.estoquee.xyz',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:8000',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:5173',
+]
+
+extra_cors = os.getenv('CORS_ALLOWED_ORIGINS', '')
+if extra_cors:
+    CORS_ALLOWED_ORIGINS.extend([o.strip() for o in extra_cors.split(',') if o.strip()])
+
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.estoquee\.xyz$",
+]
+
+CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://api.estoquee.xyz',
+    'https://estoquee.xyz',
+    'https://www.estoquee.xyz',
+    'http://localhost:8000',
+    'http://localhost:3000',
+    'http://127.0.0.1:8000',
+]
+
+extra_csrf = os.getenv('CSRF_TRUSTED_ORIGINS', '')
+if extra_csrf:
+    CSRF_TRUSTED_ORIGINS.extend([o.strip() for o in extra_csrf.split(',') if o.strip()])
 
 # Django REST Framework
 REST_FRAMEWORK = {
@@ -125,8 +191,8 @@ SPECTACULAR_SETTINGS = {
 
 # Redis & Celery
 REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
-CELERY_BROKER_URL = REDIS_URL
-CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', REDIS_URL)
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', REDIS_URL)
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'

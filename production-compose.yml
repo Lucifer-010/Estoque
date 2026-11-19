@@ -1,0 +1,190 @@
+# Dokploy Production Docker Compose for Estoque Platform
+# Self-hosted PaaS deployment without Nginx (Traefik reverse proxy managed by Dokploy)
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-estoque_db}
+      POSTGRES_USER: ${POSTGRES_USER:-estoque_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-estoque_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-estoque_user} -d ${POSTGRES_DB:-estoque_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  web:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120
+    expose:
+      - "8000"
+    volumes:
+      - media_data:/app/media
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+      - DJANGO_DEBUG=False
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=${POSTGRES_DB:-estoque_db}
+      - POSTGRES_USER=${POSTGRES_USER:-estoque_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-estoque_secret}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - RUN_MIGRATIONS=true
+      - SEED_DATA=false
+      - API_DOMAIN=${API_DOMAIN:-api.estoquee.xyz}
+      - STELLAR_NETWORK=${STELLAR_NETWORK:-TESTNET}
+      - STELLAR_HORIZON_URL=${STELLAR_HORIZON_URL:-https://horizon-testnet.stellar.org}
+      - SOROBAN_RPC_URL=${SOROBAN_RPC_URL:-https://soroban-testnet.stellar.org}
+      - SOROBAN_CONTRACT_ID=${SOROBAN_CONTRACT_ID:-CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM}
+      - TESTNET_USDC_ADDRESS=${TESTNET_USDC_ADDRESS:-CBIELTK6YBZJU5UP2WWQEUCYJLPU6QXN54CX7C3D57F7NUBJ7U2A2I5M}
+      - SOROBAN_SIMULATION_MODE=${SOROBAN_SIMULATION_MODE:-False}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
+      - "traefik.http.routers.estoque-api.rule=Host(`${API_DOMAIN:-api.estoquee.xyz}`)"
+      - "traefik.http.routers.estoque-api.entrypoints=websecure"
+      - "traefik.http.routers.estoque-api.tls=true"
+      - "traefik.http.routers.estoque-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.estoque-api.loadbalancer.server.port=8000"
+
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: celery -A config worker -l info --concurrency=4
+    volumes:
+      - media_data:/app/media
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+      - DJANGO_DEBUG=False
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=${POSTGRES_DB:-estoque_db}
+      - POSTGRES_USER=${POSTGRES_USER:-estoque_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-estoque_secret}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - RUN_MIGRATIONS=false
+      - STELLAR_NETWORK=${STELLAR_NETWORK:-TESTNET}
+      - STELLAR_HORIZON_URL=${STELLAR_HORIZON_URL:-https://horizon-testnet.stellar.org}
+      - SOROBAN_RPC_URL=${SOROBAN_RPC_URL:-https://soroban-testnet.stellar.org}
+      - SOROBAN_CONTRACT_ID=${SOROBAN_CONTRACT_ID:-CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM}
+      - TESTNET_USDC_ADDRESS=${TESTNET_USDC_ADDRESS:-CBIELTK6YBZJU5UP2WWQEUCYJLPU6QXN54CX7C3D57F7NUBJ7U2A2I5M}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: celery -A config beat -l info
+    volumes:
+      - media_data:/app/media
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+      - DJANGO_DEBUG=False
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=${POSTGRES_DB:-estoque_db}
+      - POSTGRES_USER=${POSTGRES_USER:-estoque_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-estoque_secret}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - RUN_MIGRATIONS=false
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+
+  soroban_indexer:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: python manage.py run_soroban_event_listener
+    volumes:
+      - media_data:/app/media
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+      - DJANGO_DEBUG=False
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=${POSTGRES_DB:-estoque_db}
+      - POSTGRES_USER=${POSTGRES_USER:-estoque_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-estoque_secret}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - RUN_MIGRATIONS=false
+      - STELLAR_NETWORK=${STELLAR_NETWORK:-TESTNET}
+      - STELLAR_HORIZON_URL=${STELLAR_HORIZON_URL:-https://horizon-testnet.stellar.org}
+      - SOROBAN_RPC_URL=${SOROBAN_RPC_URL:-https://soroban-testnet.stellar.org}
+      - SOROBAN_CONTRACT_ID=${SOROBAN_CONTRACT_ID:-CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM}
+      - TESTNET_USDC_ADDRESS=${TESTNET_USDC_ADDRESS:-CBIELTK6YBZJU5UP2WWQEUCYJLPU6QXN54CX7C3D57F7NUBJ7U2A2I5M}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+
+volumes:
+  postgres_data:
+  redis_data:
+  media_data:
+
+networks:
+  dokploy-network:
+    external: true
+  internal:
+    driver: bridge
+

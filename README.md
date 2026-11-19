@@ -56,12 +56,13 @@ Estoque/
 │   ├── manage.py
 │   ├── pytest.ini
 │   ├── requirements.txt
+│   ├── config/               # Dokploy / Gunicorn production entrypoint & settings
 │   ├── estoque_project/      # Django settings, Celery config, URLs
 │   ├── apps/
 │   │   ├── accounts/         # User roles, business profiles, dashboards, admin
 │   │   ├── inventory/        # Products, batches, stock movements, admin
 │   │   ├── orders/           # Purchase order lifecycle & inventory locks, admin
-│   │   ├── blockchain/       # Soroban smart contract services & audit logs, admin
+│   │   ├── blockchain/       # Soroban smart contract services, event listener & audit logs
 │   │   └── analytics/        # AI forecasting & OpenAI tool calling schemas
 │   └── tests/                # 21 comprehensive backend unit tests
 ├── contracts/
@@ -69,12 +70,39 @@ Estoque/
 │   └── src/
 │       ├── lib.rs            # Soroban contract (batch proof, handover, escrow)
 │       └── test.rs           # 4 unit tests (escrow, refund, duplicate prevention)
-├── docker-compose.yml        # Orchestration: web, redis, celery_worker
+├── docker-compose.yml        # Development Docker Compose (Backend, Redis, Celery)
+├── production-compose.yml   # Dokploy Production Compose (PostgreSQL, Redis, Web, Celery Worker/Beat, Indexer)
 ├── scripts/
 │   ├── deploy_contract.sh    # Builds wasm & deploys to Stellar Testnet
 │   └── run_all_tests.sh      # Runs all tests 3 times for backend and contract
 └── project.txt               # Original specification brief
 ```
+
+---
+
+## Production Deployment with Dokploy (`production-compose.yml`)
+
+The platform is designed to be deployed seamlessly on **Dokploy** (or any Traefik-managed Docker Swarm / compose setup) pointing to `api.estoquee.xyz`.
+
+### Architecture & Services in `production-compose.yml`:
+1. **`db`**: PostgreSQL 16 Alpine with persistent volume `postgres_data` and health checks.
+2. **`redis`**: Redis 7 Alpine with persistent volume `redis_data` and health checks.
+3. **`web`**: Gunicorn running 4 workers, automatic migration execution (`RUN_MIGRATIONS=true`), static/media handling, and Traefik labels routing `api.estoquee.xyz` with automatic Let's Encrypt TLS.
+4. **`celery_worker`**: Celery worker daemon (`concurrency=4`) executing background tasks.
+5. **`celery_beat`**: Celery periodic task scheduler.
+6. **`soroban_indexer`**: Soroban on-chain event listener (`python manage.py run_soroban_event_listener`) continuously indexing ledger events.
+
+### Traefik & Domain Routing:
+- **Router Rule**: `Host("api.estoquee.xyz")`
+- **Entrypoint**: `websecure` (port 443 with TLS enabled)
+- **Cert Resolver**: `letsencrypt`
+- **Internal Networks**: `internal` (bridge) + `dokploy-network` (external)
+
+### Domain Security & Configuration (`api.estoquee.xyz`):
+- `ALLOWED_HOSTS`: Configured for `api.estoquee.xyz`, `estoquee.xyz`, `www.estoquee.xyz`, and `.estoquee.xyz`.
+- `CORS_ALLOWED_ORIGINS`: Permits `https://estoquee.xyz`, `https://www.estoquee.xyz`, `https://api.estoquee.xyz`, and regex `^https:\/\/.*\.estoquee\.xyz$`.
+- `CSRF_TRUSTED_ORIGINS`: Set for `https://api.estoquee.xyz` and `https://estoquee.xyz`.
+- `SECURE_PROXY_SSL_HEADER`: Configured for `('HTTP_X_FORWARDED_PROTO', 'https')` behind Traefik reverse proxy.
 
 ---
 
