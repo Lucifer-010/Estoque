@@ -1,7 +1,12 @@
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env in backend/ or repository root
+load_dotenv(BASE_DIR / '.env')
+load_dotenv(BASE_DIR.parent / '.env')
 
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-estoque-prod-test-key-592837418293')
 
@@ -74,8 +79,19 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'estoque_project.wsgi.application'
 
-# Database configuration: PostgreSQL in production, SQLite in local dev/testing
-if os.getenv('POSTGRES_HOST'):
+# Check if running under tests (pytest or manage.py test)
+import sys
+IS_TESTING = 'test' in sys.argv or any('pytest' in m for m in sys.modules) or os.getenv('DJANGO_TESTING', 'False') == 'True'
+
+# Database configuration: SQLite for tests, PostgreSQL in container/production, SQLite fallback
+if IS_TESTING:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db_test.sqlite3',
+        }
+    }
+elif os.getenv('POSTGRES_HOST'):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -197,7 +213,7 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
-CELERY_TASK_ALWAYS_EAGER = os.getenv('CELERY_ALWAYS_EAGER', 'True') == 'True'
+CELERY_TASK_ALWAYS_EAGER = IS_TESTING or (os.getenv('CELERY_ALWAYS_EAGER', 'False') == 'True')
 
 # Stellar & Soroban Config
 STELLAR_NETWORK = os.getenv('STELLAR_NETWORK', 'TESTNET')
@@ -205,5 +221,5 @@ STELLAR_HORIZON_URL = os.getenv('STELLAR_HORIZON_URL', 'https://horizon-testnet.
 SOROBAN_RPC_URL = os.getenv('SOROBAN_RPC_URL', 'https://soroban-testnet.stellar.org')
 SOROBAN_CONTRACT_ID = os.getenv('SOROBAN_CONTRACT_ID', 'CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM')
 TESTNET_USDC_ADDRESS = os.getenv('TESTNET_USDC_ADDRESS', 'CBIELTK6YBZJU5UP2WWQEUCYJLPU6QXN54CX7C3D57F7NUBJ7U2A2I5M')
-SOROBAN_SIMULATION_MODE = os.getenv('SOROBAN_SIMULATION_MODE', 'True') == 'True'
+SOROBAN_SIMULATION_MODE = IS_TESTING or (os.getenv('SOROBAN_SIMULATION_MODE', 'True') == 'True')
 

@@ -1,0 +1,50 @@
+# ==============================================================================
+# Estoque Platform - Example Environment Configuration
+# Copy this file to .env and replace placeholders with your actual credentials:
+#   cp example-env .env
+# ==============================================================================
+
+# --- Django Application Settings ---
+# Generate with: python -c "import secrets; print(secrets.token_urlsafe(50))"
+DJANGO_SECRET_KEY=your-super-secret-django-key-here
+DJANGO_DEBUG=False
+DJANGO_SETTINGS_MODULE=config.settings.production
+DJANGO_ALLOWED_HOSTS=api.estoquee.xyz,estoquee.xyz,www.estoquee.xyz,localhost,127.0.0.1,web
+
+# --- Domain & Traefik Routing ---
+API_DOMAIN=api.estoquee.xyz
+
+# --- Cross-Origin Resource Sharing (CORS) & CSRF ---
+CORS_ALLOW_ALL_ORIGINS=False
+CORS_ALLOWED_ORIGINS=https://estoquee.xyz,https://www.estoquee.xyz,https://api.estoquee.xyz,http://localhost:3000,http://localhost:5173
+CSRF_TRUSTED_ORIGINS=https://api.estoquee.xyz,https://estoquee.xyz,https://www.estoquee.xyz
+
+# --- PostgreSQL Database ---
+POSTGRES_DB=estoque_db
+POSTGRES_USER=estoque_user
+POSTGRES_PASSWORD=your_secure_postgres_password_here
+POSTGRES_HOST=db
+POSTGRES_PORT=5432
+
+# --- Redis & Celery ---
+REDIS_URL=redis://redis:6379/0
+CELERY_BROKER_URL=redis://redis:6379/0
+CELERY_RESULT_BACKEND=redis://redis:6379/0
+CELERY_ALWAYS_EAGER=False
+
+# --- Stellar & Soroban Testnet Configuration ---
+STELLAR_NETWORK=TESTNET
+STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org
+SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
+SOROBAN_CONTRACT_ID=CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM
+TESTNET_USDC_ADDRESS=CBIELTK6YBZJU5UP2WWQEUCYJLPU6QXN54CX7C3D57F7NUBJ7U2A2I5M
+SOROBAN_SIMULATION_MODE=False
+
+# --- Stellar Deployer & Operator Keypair (Testnet) ---
+# Generate with: stellar keys generate or stellar-sdk Keypair.random()
+STELLAR_DEPLOYER_PUBLIC_KEY=GBWFXQWMT7UDI4L2V7WWE3DICNQDGTQDAGKGTQQD5XJFP3SOJIGOOD5M
+STELLAR_DEPLOYER_SECRET_KEY=SC77WNCTU7SQERWOZTTH7LJKM7FM4YN6K5Y3QLX6WP47MCYVU2LTA7XK
+
+# --- Deployment Flags (Dokploy) ---
+RUN_MIGRATIONS=true
+SEED_DATA=false

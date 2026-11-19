@@ -80,6 +80,28 @@ Estoque/
 
 ---
 
+## Environment Variables & Credentials (`.env` and `example-env`)
+
+All secret credentials, blockchain keys, database connections, and domains are managed strictly via environment variables.
+
+For version control safety, `.env` is git-ignored. An [example-env](file:///home/lucifer/Desktop/Estoque/example-env) template is provided for GitHub:
+
+```bash
+# Setup your environment file
+cp example-env .env
+```
+
+### Key Configuration Variables in `.env`:
+- **Django Core**: `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`
+- **Domain & Traefik Routing**: `API_DOMAIN=api.estoquee.xyz`
+- **CORS & CSRF**: `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS`
+- **PostgreSQL**: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_PORT`
+- **Redis & Celery**: `REDIS_URL`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `CELERY_ALWAYS_EAGER`
+- **Stellar & Soroban Testnet**: `STELLAR_NETWORK`, `STELLAR_HORIZON_URL`, `SOROBAN_RPC_URL`, `SOROBAN_CONTRACT_ID`, `TESTNET_USDC_ADDRESS`
+- **Stellar Deployer Keypair**: `STELLAR_DEPLOYER_PUBLIC_KEY`, `STELLAR_DEPLOYER_SECRET_KEY`
+
+---
+
 ## Production Deployment with Dokploy (`production-compose.yml`)
 
 The platform is designed to be deployed seamlessly on **Dokploy** (or any Traefik-managed Docker Swarm / compose setup) pointing to `api.estoquee.xyz`.
