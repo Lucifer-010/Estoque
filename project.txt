@@ -1,0 +1,72 @@
+Estoque - Project Brief
+Overview
+Estoque is an inventory and supply chain management platform for SMEs, suppliers, wholesalers, and retailers. It connects inventory tracking, purchase orders, stock handover verification, and secure supplier payments through Stellar and Soroban.
+Sprint Goal
+Build a working MVP where suppliers can manage inventory, retailers can create purchase orders, and simulated USDC supplier payments are secured through Soroban escrow until delivery confirmation.
+Core Features
+1. Supplier & Retailer Management
+Supplier and retailer accounts.
+Role-based dashboards.
+Business profiles.
+Purchase and sales order history.
+2. Inventory & Product Management
+Register products.
+Create inventory batches.
+Record available stock.
+Update inventory quantities.
+Track inventory movements.
+3. Purchase Order Management
+Create purchase orders.
+Link orders to inventory records.
+Track order status.
+Record supplier dispatch and retailer receipt.
+4. Soroban Supply Chain Verification
+Register inventory batch proofs.
+Record authorized stock handovers.
+Verify custody acknowledgments.
+Link on-chain references to purchase orders.
+5. USDC Supplier Payments & Escrow
+Connect non-custodial Stellar wallets.
+Fund purchase orders using simulated USDC.
+Lock supplier payments in Soroban escrow.
+Release payments after retailer confirmation.
+Support eligible pre-dispatch cancellation and refunds.
+Prevent duplicate settlement.
+Key Screens for Design
+Supplier dashboard
+Retailer dashboard
+Product registration
+Inventory management
+Inventory batch details
+Create purchase order
+Purchase order details
+Stock movement history
+Escrow funding
+Delivery confirmation
+Payment history
+Technical Requirements
+Responsive web application with supplier and retailer roles.
+Inventory and purchase order management backend.
+Soroban contracts for inventory proofs and payment escrow.
+Non-custodial Stellar wallet integration.
+Simulated USDC payments on Stellar Testnet.
+Off-chain storage for detailed inventory and business records.
+Definition of Done
+The MVP is complete when:
+Suppliers and retailers can create accounts.
+Suppliers can register products.
+Suppliers can create inventory batches.
+Inventory quantities and movements can be tracked.
+Retailers can create purchase orders.
+Purchase orders are linked to inventory records.
+Inventory batch proofs are registered through Soroban.
+Supplier dispatch and retailer receipt can be recorded.
+Authorized stock handovers are verifiable.
+Retailers can fund purchase orders using simulated USDC.
+Soroban escrow securely locks supplier payments.
+Retailer confirmation triggers authorized payment release.
+Eligible pre-dispatch cancellations trigger refunds.
+Duplicate settlement is rejected.
+Contract interactions and transactions are verifiable on Stellar Testnet.
+A GitHub repository, demo video, and deployed Soroban contract addresses are submitted.
+

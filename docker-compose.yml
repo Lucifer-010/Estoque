@@ -1,0 +1,67 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: estoque_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  web:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: estoque_backend
+    restart: unless-stopped
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./backend:/app
+      - estoque_db_data:/app/db_volume
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_DEBUG=True
+      - DJANGO_SECRET_KEY=django-insecure-estoque-docker-secret-key-9283748239
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_ALWAYS_EAGER=False
+      - STELLAR_NETWORK=TESTNET
+      - STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org
+      - SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
+      - SOROBAN_CONTRACT_ID=CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM
+      - TESTNET_USDC_ADDRESS=CBIELTK6YBZJU5UP2WWQEUCYJLPU6QXN54CX7C3D57F7NUBJ7U2A2I5M
+      - SOROBAN_SIMULATION_MODE=True
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: estoque_celery_worker
+    restart: unless-stopped
+    command: celery -A estoque_project worker -l INFO
+    volumes:
+      - ./backend:/app
+    environment:
+      - DJANGO_DEBUG=True
+      - DJANGO_SECRET_KEY=django-insecure-estoque-docker-secret-key-9283748239
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_ALWAYS_EAGER=False
+      - STELLAR_NETWORK=TESTNET
+      - STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org
+      - SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
+      - SOROBAN_CONTRACT_ID=CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM
+      - TESTNET_USDC_ADDRESS=CBIELTK6YBZJU5UP2WWQEUCYJLPU6QXN54CX7C3D57F7NUBJ7U2A2I5M
+      - SOROBAN_SIMULATION_MODE=True
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  estoque_db_data:
+
